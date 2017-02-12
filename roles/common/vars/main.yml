@@ -1,0 +1,11 @@
+---
+ssh_port: 10022
+
+common_groups:
+  - devel
+
+sudo_users:
+  - name: oppara
+    groups: wheel,devel
+    password: $1$eAX9fl1G$4jVxAVIXhg42rRPE4B1Ak0
+    pub_path: /Users/oppara/.ssh/id_rsa.pub

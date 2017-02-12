@@ -1,0 +1,4 @@
+/fetch/*
+sshpass*
+*retry
+*.ignore

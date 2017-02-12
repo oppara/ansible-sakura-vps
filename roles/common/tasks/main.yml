@@ -1,0 +1,81 @@
+---
+- block:
+  - name: Add groups
+    group: name={{ item }}
+    with_items: "{{ common_groups }}"
+  tags: common_groups
+
+- block:
+  - name: Add users
+    user:
+      name: "{{ item.name }}"
+      groups: "{{ item.groups }}"
+      password: "{{ item.password }}"
+      append: yes
+    with_items: "{{ sudo_users }}"
+
+  - name: Set up authorized_keys
+    authorized_key:
+      user: "{{ item.name }}"
+      key: "{{ lookup('file', item.pub_path) }}"
+    with_items: "{{ sudo_users }}"
+
+  - name: Allow wheel group to use sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      insertafter: "^# %wheel\\s+ALL=\\(ALL\\)\\s+ALL"
+      line: "%wheel ALL=(ALL) ALL"
+      validate: "visudo -cf %s"
+      backup: yes
+
+  tags: sudo_users
+
+- block:
+  - name: Prohibit root login
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      insertafter: "^#PermitRootLogin yes"
+      line: "PermitRootLogin no"
+      validate: "sshd -T -f %s"
+      backup: yes
+
+  - name: Prohibit login with password
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      regexp: "^PasswordAuthentication yes"
+      line: "PasswordAuthentication no"
+      backrefs: yes
+      validate: "sshd -T -f %s"
+      backup: yes
+
+  - name: Change ssh port number
+    lineinfile:
+      dest: /etc/ssh/sshd_config
+      state: present
+      insertafter: "^#Port 22"
+      regexp: "^Port"
+      line: "Port {{ ssh_port }}"
+      validate: "sshd -T -f %s"
+      backup: yes
+
+  - name: Enable custom ssh port
+    firewalld:
+      port: "{{ ssh_port }}/tcp"
+      permanent: true
+      state: enabled
+
+  - name: Disable default ssh port
+    firewalld:
+      service: ssh
+      permanent: true
+      state: disabled
+
+  - name: Restart sshd and firewalld
+    shell: systemctl restart sshd && systemctl reload firewalld
+
+  tags: ssh
+
+
