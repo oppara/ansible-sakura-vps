@@ -1,0 +1,33 @@
+---
+- block:
+  - name: yum install epel-release
+    yum: name=epel-release state=installed
+
+  - name: add remi-repository
+    command: rpm -ih http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+    args:
+      creates: /etc/yum.repos.d/remi.repo
+  tags: yum_repository
+
+- block:
+  - name: install php 7.2
+    yum: name={{ item }} enablerepo=remi,remi-php72 state=installed
+    with_items:
+      - php
+      - php-devel
+      - php-gd
+      - php-mbstring
+      - php-mcrypt
+      - php-mysqlnd
+      - php-pdo
+      - php-xml
+      - php-zip
+      - php-intl
+      - php-opcache
+
+  - name: deploy php.ini
+    template:
+      src: php.ini.j2
+      dest: /etc/php.d/90-php.ini
+
+  tags: php
