@@ -8,6 +8,6 @@ test ansible connection
 
 run
 
-    % ansible-playbook setup.yml -k
+    % ansible-playbook init.yml -k
 
 
