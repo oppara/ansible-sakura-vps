@@ -1,0 +1,50 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+if Vagrant.has_plugin?("dotenv")
+  Dotenv.load
+end
+
+
+MY_HOSTNAME = "ansible-sakura"
+MY_IP_ADDRESS = ENV["MY_IP_ADDRESS"] ? ENV["MY_IP_ADDRESS"] : "192.168.23.77"
+MY_SSH_PORT = ENV["MY_SSH_PORT"] ? ENV["MY_SSH_PORT"] : "2237"
+
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+
+  config.ssh.insert_key = false
+
+  if Vagrant.has_plugin?("vagrant-cachier")
+    config.cache.scope = :box
+  end
+
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    # config.vbguest.auto_update = false
+  end
+
+  config.vm.box = "centos/7"
+  config.vm.hostname = MY_HOSTNAME
+  config.vm.network :private_network, ip: MY_IP_ADDRESS
+  config.vm.network :forwarded_port, guest: 22, host: MY_SSH_PORT
+  config.vm.provider :virtualbox do |vb|
+    vb.name = MY_HOSTNAME
+    # vb.memory = "1024"
+    # vb.gui = true
+  end
+
+  config.vm.provision :shell, :inline => <<-EOT
+      groupmod -g 1500 vagrant
+      usermod -aG wheel vagrant
+      echo "root:root" | chpasswd
+      cp -f /vagrant/etc/sshd_config /etc/ssh/.
+      systemctl restart network.service
+      systemctl restart sshd.service
+      systemctl start firewalld
+  EOT
+
+end
