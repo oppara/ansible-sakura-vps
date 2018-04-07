@@ -1,0 +1,58 @@
+---
+
+- name: install the mysql rpm
+  yum:
+    name: "{{ mysql_yum_repository }}"
+    state: present
+
+- name: install the mysql
+  yum: name={{ item }} state=present
+  with_items: "{{ mysql_yum_packages }}"
+
+- name: check if mysql log file size is 0 or not
+  stat: path={{ mysql_log_file }}
+  register: log_file
+  changed_when: false
+
+- name: start the mysqld
+  service: name=mysqld state=started enabled=yes
+
+- name: get the temporary root password
+  shell: cat {{ mysql_log_file }} | grep 'temporary password'
+  register: temporary_password
+  changed_when: false
+  when: log_file.stat.size == 0
+
+- name: change the root password
+  command: >
+    mysqladmin password '{{ mysql_user_password }}' -u root -p'{{ temporary_password.stdout.split(" ")[-1] }}'
+  changed_when: false
+  when: log_file.stat.size == 0
+
+- name: run mysql_secure_installation
+  command: mysql_secure_installation -u root -p'{{ mysql_user_password }}' -D
+  changed_when: false
+  when: log_file.stat.size == 0
+
+- name: create a log file to write the slow query
+  file:
+    path: "{{ mysql_slow_log_file }}"
+    state: touch
+    owner: mysql
+    group: mysql
+    mode: 0644
+  when: log_file.stat.size == 0
+
+- name: setting up to my.cnf
+  blockinfile:
+    path: /etc/my.cnf
+    block: |
+      {{ item.content }}
+    marker: "# {mark} {{ item.name }}"
+    validate: mysqld --defaults-file=%s --verbose --help
+  with_items: "{{ mysql_my_cnf }}"
+  register: config_file
+
+- name: restart the mysqld
+  service: name=mysqld state=restarted
+  when: config_file.changed

@@ -1,0 +1,27 @@
+---
+
+mysql_yum_repository: https://dev.mysql.com/get/mysql57-community-release-el7-11.noarch.rpm
+mysql_yum_packages:
+  - MySQL-python
+  - mysql-community-server
+
+mysql_secure_installation_query: >
+  DELETE FROM mysql.user WHERE User='';
+  DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+  DROP DATABASE IF EXISTS test;
+  DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+  FLUSH PRIVILEGES;
+
+mysql_log_file: /var/log/mysqld.log
+mysql_slow_log_file: /var/log/mysqld-slow.log
+mysql_my_cnf:
+  - name: slow query log
+    content: |
+      slow_query_log=1
+      slow_query_log_file={{ mysql_slow_log_file }}
+      long_query_time=1
+      log_queries_not_using_indexes
+      log_slow_admin_statements
+  - name: enable strict sql mode
+    content: |
+      sql_mode=TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY
